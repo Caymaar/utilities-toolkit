@@ -92,4 +92,5 @@ jobs:
           UV_NO_SOURCES: "1"   # ⬅ par sécurité, pour ne pas toucher aux sources git
         run: |
           uv build
+          
           uv publish
