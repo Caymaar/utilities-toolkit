@@ -58,6 +58,8 @@ jobs:
       - name: Bump version with uv
         if: steps.bump.outputs.bump != 'none'
         id: bump_version
+        env:
+          UV_NO_SOURCES: "1" # Utile pour ne pas toucher aux sources lors du bump
         run: |
           uv version --bump "${{ steps.bump.outputs.bump }}"
 
