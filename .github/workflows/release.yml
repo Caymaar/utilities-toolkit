@@ -26,11 +26,15 @@ jobs:
       - name: Install Python (from requires-python)
         run: uv python install
 
-      - name: Install project (dev dependencies)
-        run: uv sync --group dev --frozen --no-build-package utilities-themateam
+      - name: Register GitHub PAT for private repos
+        run: echo "${{ secrets.ORG_GH_PAT }}" | gh auth login --with-token
+      - name: Configure git credential helper
+        run: gh auth setup-git
 
+      - name: Install project (dev dependencies)
+        run: uv sync --group dev
       - name: Run tests
-        run: uv run --group dev pytest --frozen --no-build-package utilities-themateam
+        run: uv run --group dev pytest
       - name: Detect version bump from commit message
         id: bump
         run: |
@@ -56,7 +60,7 @@ jobs:
         if: steps.bump.outputs.bump != 'none'
         id: bump_version
         run: |
-          uv version --bump "${{ steps.bump.outputs.bump }}" --frozen --no-build-package utilities-themateam
+          uv version --bump "${{ steps.bump.outputs.bump }}"
           # Récupère juste la version (sans le nom du package)
           version=$(uv version --short)
           echo "version=$version" >> "$GITHUB_OUTPUT"
@@ -90,6 +94,6 @@ jobs:
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
           UV_NO_SOURCES: "1"   # ⬅ par sécurité, pour ne pas toucher aux sources git
         run: |
-          uv build --frozen --no-build-package utilities-themateam
+          uv build
 
           uv publish

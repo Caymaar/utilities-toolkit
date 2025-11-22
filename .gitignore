@@ -13,3 +13,6 @@ wheels/
 # MacOS files
 .DS_Store
 
+# Lock files
+uv.lock
+
