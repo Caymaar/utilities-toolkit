@@ -4,6 +4,7 @@ from utilities.constant import CONFIG_PATH
 import configparser
 import os
 
+
 class Config(metaclass=VaultMeta):
     path = CONFIG_PATH
 
