@@ -57,7 +57,7 @@ jobs:
         if: steps.bump.outputs.bump != 'none'
         id: bump_version
         run: |
-          uv version --bump "${{ steps.bump.outputs.bump }}" --no-build-package utilities-themateam
+          uv version --bump "${{ steps.bump.outputs.bump }}" --frozen --no-build-package utilities-themateam
           # Récupère juste la version (sans le nom du package)
           version=$(uv version --short)
           echo "version=$version" >> "$GITHUB_OUTPUT"
