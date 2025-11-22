@@ -3,34 +3,37 @@ name: CI & Release
 on:
   push:
     branches:
-      - main        # adapte si ta branche par défaut est 'master'
+      - main  # adapte si nécessaire
 
 jobs:
   test-build-publish:
-    # Évite de relancer le workflow sur le commit auto de release
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # nécessaire pour pousser le commit + tag
+      contents: write  # pour push commit + tag
 
     steps:
       - name: Checkout
         uses: actions/checkout@v5
         with:
-          fetch-depth: 0   # pour pouvoir créer/pousser les tags proprement
+          fetch-depth: 0
 
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
 
-      - name: Install Python (respecte pyproject.requires-python)
+      - name: Install Python (from requires-python)
         run: uv python install
 
       - name: Install project (dev dependencies)
+        env:
+          UV_NO_SOURCES: "1"   # ⬅ ignore utilities-themateam.git
         run: uv sync --group dev
 
       - name: Run tests
+        env:
+          UV_NO_SOURCES: "1"
         run: uv run --group dev pytest
 
       - name: Detect version bump from commit message
@@ -39,7 +42,6 @@ jobs:
           msg="${{ github.event.head_commit.message }}"
           bump="none"
 
-          # On mappe FIX -> patch, MINOR -> minor, MAJOR -> major
           if echo "$msg" | grep -q "FIX"; then
             bump="patch"
           fi
@@ -59,11 +61,11 @@ jobs:
         if: steps.bump.outputs.bump != 'none'
         id: bump_version
         env:
-          UV_NO_SOURCES: "1" # Utile pour ne pas toucher aux sources lors du bump
+          UV_NO_SOURCES: "1"   # ⬅ crucial ici
         run: |
           uv version --bump "${{ steps.bump.outputs.bump }}"
-
-          version=$(uv version | awk '{print $2}')
+          # Récupère juste la version (sans le nom du package)
+          version=$(uv version --short)
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "New version: $version"
 
@@ -80,7 +82,6 @@ jobs:
             git add uv.lock
           fi
 
-          # Si rien n'a changé, on sort proprement
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
@@ -93,6 +94,6 @@ jobs:
       - name: Publish to PyPI with uv
         if: steps.bump.outputs.bump != 'none'
         env:
-          # Mets ton token PyPI dans un secret PYPI_API_TOKEN
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+          UV_NO_SOURCES: "1"   # ⬅ par sécurité, pour ne pas toucher aux sources git
         run: uv publish
