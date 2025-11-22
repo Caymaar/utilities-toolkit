@@ -17,8 +17,7 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
-          # On ne veut PAS que checkout configure un header auth global,
-          # sinon ça écrase notre config pour le PAT privé.
+          # On ne veut pas que checkout injecte ses propres credentials
           persist-credentials: false
 
       - name: Install uv
@@ -26,11 +25,10 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Set up Python
+      - name: Set up Python (from requires-python)
         run: uv python install
 
       # PAT d'orga pour accéder aux repos privés (utilities-themateam)
-      # On suit la doc officielle uv: echo PAT | gh auth login --with-token + gh auth setup-git
       - name: Register GitHub PAT for private repos
         run: echo "${{ secrets.ORG_GH_PAT }}" | gh auth login --with-token
 
@@ -77,8 +75,8 @@ jobs:
         if: steps.bump.outputs.bump != 'none'
         env:
           VERSION: ${{ steps.bump_version.outputs.version }}
-          # GITHUB_TOKEN est injecté automatiquement par Actions,
-          # pas besoin de le définir dans secrets, il est déjà dispo ici.
+          # URL de push utilisant le GITHUB_TOKEN natif du workflow
+          REPO_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -93,16 +91,12 @@ jobs:
           else
             git commit -m "chore: release v$VERSION [skip ci]"
 
-            # 🔐 Pour pousser, on BYPASS le credential helper (PAT),
-            # et on utilise explicitement le GITHUB_TOKEN du workflow.
-            REPO_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-
-            # Push sur la branche courante (main)
-            git push "${REPO_URL}" HEAD:${GITHUB_REF_NAME}
+            # Push sur la branche courante (main) avec le GITHUB_TOKEN
+            git push "$REPO_URL" HEAD:${GITHUB_REF_NAME}
 
             # Crée et push le tag
             git tag "v$VERSION"
-            git push "${REPO_URL}" "v$VERSION"
+            git push "$REPO_URL" "v$VERSION"
           fi
 
       - name: Build distributions with uv
