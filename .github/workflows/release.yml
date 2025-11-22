@@ -27,13 +27,9 @@ jobs:
         run: uv python install
 
       - name: Install project (dev dependencies)
-        env:
-          UV_NO_SOURCES: "1"   # ⬅ ignore utilities-themateam.git
         run: uv sync --group dev
 
       - name: Run tests
-        env:
-          UV_NO_SOURCES: "1"
         run: uv run --group dev pytest
 
       - name: Detect version bump from commit message
@@ -60,8 +56,6 @@ jobs:
       - name: Bump version with uv
         if: steps.bump.outputs.bump != 'none'
         id: bump_version
-        env:
-          UV_NO_SOURCES: "1"   # ⬅ crucial ici
         run: |
           uv version --bump "${{ steps.bump.outputs.bump }}" --no-sync
           # Récupère juste la version (sans le nom du package)
