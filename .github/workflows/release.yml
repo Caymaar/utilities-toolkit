@@ -3,7 +3,7 @@ name: CI & Release
 on:
   push:
     branches:
-      - main  # adapte si nécessaire
+      - main  # adapte si besoin
 
 jobs:
   test-build-publish:
@@ -17,6 +17,7 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          persist-credentials: false  # important pour laisser gh/ton PAT prendre la main
 
       - name: Install uv
         uses: astral-sh/setup-uv@v6
@@ -26,15 +27,21 @@ jobs:
       - name: Install Python (from requires-python)
         run: uv python install
 
+      # Auth GitHub avec ton PAT d'orga pour accéder aux repos privés (utilities-themateam)
       - name: Register GitHub PAT for private repos
-        run: echo "${{ secrets.ORG_GH_PAT }}" | gh auth login --with-token
-      - name: Configure git credential helper
-        run: gh auth setup-git
+        env:
+          GH_TOKEN: ${{ secrets.ORG_GH_PAT }}  # PAT avec accès lecture au repo privé
+        run: |
+          echo "$GH_TOKEN" | gh auth login --with-token
+          gh auth setup-git
+          gh auth status
 
       - name: Install project (dev dependencies)
         run: uv sync --group dev
+
       - name: Run tests
         run: uv run --group dev pytest
+
       - name: Detect version bump from commit message
         id: bump
         run: |
@@ -60,8 +67,10 @@ jobs:
         if: steps.bump.outputs.bump != 'none'
         id: bump_version
         run: |
-          uv version --bump "${{ steps.bump.outputs.bump }}"
-          # Récupère juste la version (sans le nom du package)
+          # --frozen pour ne pas relocker / resync, on veut juste toucher le pyproject
+          uv version --bump "${{ steps.bump.outputs.bump }}" --frozen
+
+          # Récupère juste la version (ex: 0.1.1)
           version=$(uv version --short)
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "New version: $version"
@@ -88,12 +97,15 @@ jobs:
             git push origin "v$VERSION"
           fi
 
-      - name: Publish to PyPI with uv
+      - name: Build distributions with uv
         if: steps.bump.outputs.bump != 'none'
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-          UV_NO_SOURCES: "1"   # ⬅ par sécurité, pour ne pas toucher aux sources git
         run: |
           uv build
 
+      - name: Publish to PyPI with uv
+        if: steps.bump.outputs.bump != 'none'
+        env:
+          # Token PyPI stocké dans les secrets du repo ou de l'orga
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
           uv publish
