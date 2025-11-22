@@ -59,7 +59,7 @@ jobs:
         if: steps.bump.outputs.bump != 'none'
         id: bump_version
         run: |
-          uv version --bump "${{ steps.bump.outputs.bump }}" --frozen --no-sync
+          uv version --bump "${{ steps.bump.outputs.bump }}"
 
           version=$(uv version | awk '{print $2}')
           echo "version=$version" >> "$GITHUB_OUTPUT"
