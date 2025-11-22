@@ -54,7 +54,7 @@ class _IniSectionProxy(dict):
         real = key_map.get(key.upper())
         if real is not None:
             return self[real]
-        raise AttributeError(f"{key!r} not found in section {self._section_name!r}")
+        raise AttributeError(f"{key!r} not found in section {self._section_name!r}, available variables: {list(self._sections_dict[self._section_name].keys())}")
 
     def __setattr__(self, key: str, value):
         # Préserve les attributs internes
@@ -203,7 +203,7 @@ class VaultMeta(type):
             file_map = {os.path.splitext(f)[0].replace('-', '_').lower(): f for f in files}
             file_name = file_map.get(name.lower())
             if not file_name:
-                raise FileNotFoundError(f"File '{name}' not found in Locker.")
+                raise FileNotFoundError(f"File '{name}' not found in {cls.path}.")
             file_path = os.path.join(cls.path, file_name)
             ext = os.path.splitext(file_name)[1].lower()
             if ext == '.ini':
@@ -216,4 +216,4 @@ class VaultMeta(type):
                 raise AttributeError(f"Unsupported file type: {ext}")
             return _FileProxy(file_path, file_type)
         else:
-            raise FileNotFoundError(f"File '{name}' not found in Locker.")
+            raise FileNotFoundError(f"File '{name}' not found in {cls.path}.")

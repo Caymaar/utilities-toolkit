@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 try:
     from rich.logging import RichHandler
@@ -128,7 +128,7 @@ class LoggingConfigurator:
         *,
         project: Optional[str] = None,
         level: str = "INFO",
-        base_dir: Optional[str | Path] = None,
+        base_dir: Optional[Union[str, Path]] = None,
         console: bool = True,
         log_file: bool = True,
         json_file: bool = False,
@@ -255,7 +255,7 @@ class LoggingConfigurator:
         cls.configured = True
 
     @staticmethod
-    def log_dir_for(project: str, base_dir: Optional[str | Path] = None) -> Path:
+    def log_dir_for(project: str, base_dir: Optional[Union[str, Path]] = None) -> Path:
         base_dir_env = os.environ.get("LOG_DIR")
         if base_dir_env:
             return Path(base_dir_env)
@@ -270,7 +270,7 @@ class LoggingConfigurator:
         module: str,
         level: str = "DEBUG",
         *,
-        base_dir: Optional[str | Path] = None,
+        base_dir: Optional[Union[str, Path]] = None,
         date_prefix_files: bool = True,
         retention_days: int = 14,
     ) -> None:

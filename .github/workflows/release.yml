@@ -1,0 +1,96 @@
+name: CI & Release
+
+on:
+  push:
+    branches:
+      - main        # adapte si ta branche par défaut est 'master'
+
+jobs:
+  test-build-publish:
+    # Évite de relancer le workflow sur le commit auto de release
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # nécessaire pour pousser le commit + tag
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # pour pouvoir créer/pousser les tags proprement
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install Python (respecte pyproject.requires-python)
+        run: uv python install
+
+      - name: Install project (dev dependencies)
+        run: uv sync --group dev
+
+      - name: Run tests
+        run: uv run --group dev pytest
+
+      - name: Detect version bump from commit message
+        id: bump
+        run: |
+          msg="${{ github.event.head_commit.message }}"
+          bump="none"
+
+          # On mappe FIX -> patch, MINOR -> minor, MAJOR -> major
+          if echo "$msg" | grep -q "FIX"; then
+            bump="patch"
+          fi
+
+          if echo "$msg" | grep -q "MINOR"; then
+            bump="minor"
+          fi
+
+          if echo "$msg" | grep -q "MAJOR"; then
+            bump="major"
+          fi
+
+          echo "bump=$bump" >> "$GITHUB_OUTPUT"
+          echo "Bump type: $bump"
+
+      - name: Bump version with uv
+        if: steps.bump.outputs.bump != 'none'
+        id: bump_version
+        run: |
+          uv version --bump "${{ steps.bump.outputs.bump }}" --frozen --no-sync
+
+          version=$(uv version | awk '{print $2}')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "New version: $version"
+
+      - name: Commit version bump and tag
+        if: steps.bump.outputs.bump != 'none'
+        env:
+          VERSION: ${{ steps.bump_version.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add pyproject.toml
+          if [ -f uv.lock ]; then
+            git add uv.lock
+          fi
+
+          # Si rien n'a changé, on sort proprement
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: release v$VERSION [skip ci]"
+            git tag "v$VERSION"
+            git push origin HEAD
+            git push origin "v$VERSION"
+          fi
+
+      - name: Publish to PyPI with uv
+        if: steps.bump.outputs.bump != 'none'
+        env:
+          # Mets ton token PyPI dans un secret PYPI_API_TOKEN
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        run: uv publish
