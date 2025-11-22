@@ -2,7 +2,7 @@
 
 > A lightweight utilities package for managing configuration and logging across multiple projects. It provides a simple interface to create and access configuration files in various formats, along with a straightforward logging system that can optionally centralize logs and configs in a single location.
 
-![Version](https://img.shields.io/github/v/tag/Caymaar/utilities?label=version)
+![Version](https://img.shields.io/github/v/tag/Caymaar/utilities-toolkit?label=version)
 
 
 ## Installation
