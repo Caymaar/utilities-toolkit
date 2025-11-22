@@ -12,12 +12,16 @@ jobs:
     permissions:
       contents: write  # pour push commit + tag
 
+    # GH_TOKEN = ton PAT org-level, visible pour gh + git
+    env:
+      GH_TOKEN: ${{ secrets.ORG_GH_PAT }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
-          persist-credentials: false  # important pour laisser gh/ton PAT prendre la main
+          persist-credentials: false  # on laisse tomber le GITHUB_TOKEN par défaut
 
       - name: Install uv
         uses: astral-sh/setup-uv@v6
@@ -27,14 +31,16 @@ jobs:
       - name: Install Python (from requires-python)
         run: uv python install
 
-      # Auth GitHub avec ton PAT d'orga pour accéder aux repos privés (utilities-themateam)
-      - name: Register GitHub PAT for private repos
-        env:
-          GH_TOKEN: ${{ secrets.ORG_GH_PAT }}  # PAT avec accès lecture au repo privé
+      # ⚙️ Brancher git sur gh + GH_TOKEN (PAT)
+      - name: Configure git to use GitHub CLI credentials
         run: |
-          echo "$GH_TOKEN" | gh auth login --with-token
-          gh auth setup-git
-          gh auth status
+          # On efface tout helper existant pour https://github.com
+          git config --global credential.https://github.com.helper ''
+          # On ajoute gh comme credential helper
+          git config --global --add credential.https://github.com.helper "!gh auth git-credential"
+
+          echo "gh auth status:"
+          gh auth status || true
 
       - name: Install project (dev dependencies)
         run: uv sync --group dev
@@ -67,10 +73,9 @@ jobs:
         if: steps.bump.outputs.bump != 'none'
         id: bump_version
         run: |
-          # --frozen pour ne pas relocker / resync, on veut juste toucher le pyproject
+          # --frozen : pas de relock/sync, on touche juste au pyproject
           uv version --bump "${{ steps.bump.outputs.bump }}" --frozen
 
-          # Récupère juste la version (ex: 0.1.1)
           version=$(uv version --short)
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "New version: $version"
@@ -105,7 +110,6 @@ jobs:
       - name: Publish to PyPI with uv
         if: steps.bump.outputs.bump != 'none'
         env:
-          # Token PyPI stocké dans les secrets du repo ou de l'orga
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         run: |
           uv publish
