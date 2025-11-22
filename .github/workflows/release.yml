@@ -90,4 +90,6 @@ jobs:
         env:
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
           UV_NO_SOURCES: "1"   # ⬅ par sécurité, pour ne pas toucher aux sources git
-        run: uv publish
+        run: |
+          uv build
+          uv publish
