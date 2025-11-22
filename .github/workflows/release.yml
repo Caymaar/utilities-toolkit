@@ -7,7 +7,7 @@ on:
 
 jobs:
   test-build-publish:
-    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    if: "!contains(github.event.head_commit.message, 'release v')"
     runs-on: ubuntu-latest
     permissions:
       contents: write  # nécessaire pour pouvoir pousser commit + tag avec GITHUB_TOKEN
@@ -89,7 +89,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "chore: release v$VERSION [skip ci]"
+            git commit -m "release v$VERSION"
 
             # Push sur la branche courante (main) avec le GITHUB_TOKEN
             git push "$REPO_URL" HEAD:${GITHUB_REF_NAME}
