@@ -1,6 +1,6 @@
 [project]
 name = "utilities-toolkit"
-version = "0.1.1"
+version = "0.1.2"
 description = "A lightweight utilities package for managing configuration and logging across multiple projects. It provides a simple interface to create and access configuration files in various formats, along with a straightforward logging system that can optionally centralize logs and configs in a single location."
 readme = "README.md"
 authors = [
