@@ -63,7 +63,7 @@ jobs:
         env:
           UV_NO_SOURCES: "1"   # ⬅ crucial ici
         run: |
-          uv version --bump "${{ steps.bump.outputs.bump }}"
+          uv version --bump "${{ steps.bump.outputs.bump }}" --no-sync
           # Récupère juste la version (sans le nom du package)
           version=$(uv version --short)
           echo "version=$version" >> "$GITHUB_OUTPUT"
