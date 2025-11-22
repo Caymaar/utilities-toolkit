@@ -10,37 +10,32 @@ jobs:
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # pour push commit + tag
-
-    # GH_TOKEN = ton PAT org-level, visible pour gh + git
-    env:
-      GH_TOKEN: ${{ secrets.ORG_GH_PAT }}
+      contents: write  # nécessaire pour pouvoir pousser commit + tag avec GITHUB_TOKEN
 
     steps:
       - name: Checkout
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
-          persist-credentials: false  # on laisse tomber le GITHUB_TOKEN par défaut
+          # On ne veut PAS que checkout configure un header auth global,
+          # sinon ça écrase notre config pour le PAT privé.
+          persist-credentials: false
 
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
 
-      - name: Install Python (from requires-python)
+      - name: Set up Python
         run: uv python install
 
-      # ⚙️ Brancher git sur gh + GH_TOKEN (PAT)
-      - name: Configure git to use GitHub CLI credentials
-        run: |
-          # On efface tout helper existant pour https://github.com
-          git config --global credential.https://github.com.helper ''
-          # On ajoute gh comme credential helper
-          git config --global --add credential.https://github.com.helper "!gh auth git-credential"
+      # PAT d'orga pour accéder aux repos privés (utilities-themateam)
+      # On suit la doc officielle uv: echo PAT | gh auth login --with-token + gh auth setup-git
+      - name: Register GitHub PAT for private repos
+        run: echo "${{ secrets.ORG_GH_PAT }}" | gh auth login --with-token
 
-          echo "gh auth status:"
-          gh auth status || true
+      - name: Configure git credential helper for GitHub
+        run: gh auth setup-git
 
       - name: Install project (dev dependencies)
         run: uv sync --group dev
@@ -57,11 +52,9 @@ jobs:
           if echo "$msg" | grep -q "FIX"; then
             bump="patch"
           fi
-
           if echo "$msg" | grep -q "MINOR"; then
             bump="minor"
           fi
-
           if echo "$msg" | grep -q "MAJOR"; then
             bump="major"
           fi
@@ -73,7 +66,7 @@ jobs:
         if: steps.bump.outputs.bump != 'none'
         id: bump_version
         run: |
-          # --frozen : pas de relock/sync, on touche juste au pyproject
+          # --frozen : on modifie juste la version, sans relock / resync
           uv version --bump "${{ steps.bump.outputs.bump }}" --frozen
 
           version=$(uv version --short)
@@ -84,6 +77,8 @@ jobs:
         if: steps.bump.outputs.bump != 'none'
         env:
           VERSION: ${{ steps.bump_version.outputs.version }}
+          # GITHUB_TOKEN est injecté automatiquement par Actions,
+          # pas besoin de le définir dans secrets, il est déjà dispo ici.
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -97,9 +92,17 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "chore: release v$VERSION [skip ci]"
+
+            # 🔐 Pour pousser, on BYPASS le credential helper (PAT),
+            # et on utilise explicitement le GITHUB_TOKEN du workflow.
+            REPO_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+            # Push sur la branche courante (main)
+            git push "${REPO_URL}" HEAD:${GITHUB_REF_NAME}
+
+            # Crée et push le tag
             git tag "v$VERSION"
-            git push origin HEAD
-            git push origin "v$VERSION"
+            git push "${REPO_URL}" "v$VERSION"
           fi
 
       - name: Build distributions with uv
