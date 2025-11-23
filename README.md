@@ -2,8 +2,8 @@
 
 > A lightweight utilities package for managing configuration and logging across multiple projects. It provides a simple interface to create and access configuration files in various formats, along with a straightforward logging system that can optionally centralize logs and configs in a single location.
 
-![Version](https://img.shields.io/github/v/tag/Caymaar/utilities-toolkit?label=version)
-
+![Latest Version](https://img.shields.io/github/v/tag/Caymaar/utilities-toolkit?label=version)
+![Python Version](https://img.shields.io/pypi/pyversions/utilities-toolkit)
 
 ## Installation
 
@@ -13,7 +13,7 @@ pip install utilities-toolkit
 ```
 Or with uv:
 ```bash
-uv add git+https://github.com/themateam-lib/utilities.git@v0.1.6
+uv add utilities-toolkit
 ```
 
 ## Main Features
