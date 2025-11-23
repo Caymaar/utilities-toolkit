@@ -3,22 +3,21 @@ name: CI & Release
 on:
   push:
     branches:
-      - main  # adapte si besoin
+      - main
 
 jobs:
   test-build-publish:
+    # To avoid infinite loops, skip this workflow if the commit message contains 'release v'
     if: "!contains(github.event.head_commit.message, 'release v')"
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # nécessaire pour pouvoir pousser commit + tag avec GITHUB_TOKEN
+      contents: write  # to be able to push commit + tag
 
     steps:
       - name: Checkout
         uses: actions/checkout@v5
         with:
-          fetch-depth: 0
-          # On ne veut pas que checkout injecte ses propres credentials
-          persist-credentials: false
+          fetch-depth: 0  # necessary to create / push tags properly
 
       - name: Install uv
         uses: astral-sh/setup-uv@v6
@@ -27,13 +26,6 @@ jobs:
 
       - name: Set up Python (from requires-python)
         run: uv python install
-
-      # PAT d'orga pour accéder aux repos privés (utilities-themateam)
-      - name: Register GitHub PAT for private repos
-        run: echo "${{ secrets.ORG_GH_PAT }}" | gh auth login --with-token
-
-      - name: Configure git credential helper for GitHub
-        run: gh auth setup-git
 
       - name: Install project (dev dependencies)
         run: uv sync --group dev
@@ -64,7 +56,6 @@ jobs:
         if: steps.bump.outputs.bump != 'none'
         id: bump_version
         run: |
-          # --frozen : on modifie juste la version, sans relock / resync
           uv version --bump "${{ steps.bump.outputs.bump }}" --frozen
 
           version=$(uv version --short)
@@ -75,8 +66,6 @@ jobs:
         if: steps.bump.outputs.bump != 'none'
         env:
           VERSION: ${{ steps.bump_version.outputs.version }}
-          # URL de push utilisant le GITHUB_TOKEN natif du workflow
-          REPO_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -90,23 +79,18 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "release v$VERSION"
-
-            # Push sur la branche courante (main) avec le GITHUB_TOKEN
-            git push "$REPO_URL" HEAD:${GITHUB_REF_NAME}
-
-            # Crée et push le tag
             git tag "v$VERSION"
-            git push "$REPO_URL" "v$VERSION"
+            git push origin HEAD
+            git push origin "v$VERSION"
           fi
 
-      - name: Build distributions with uv
+      - name: Build distributions
         if: steps.bump.outputs.bump != 'none'
-        run: |
-          uv build
+        run: uv build
 
-      - name: Publish to PyPI with uv
+      - name: Publish to PyPI
         if: steps.bump.outputs.bump != 'none'
         env:
+          # PyPI token (API token) stored in secret
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-        run: |
-          uv publish
+        run: uv publish
