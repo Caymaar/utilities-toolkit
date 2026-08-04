@@ -18,7 +18,7 @@ uv add utilities-toolkit
 ```
 
 ## Main Features
-- **Dynamic configuration access**: Read and write INI, JSON, and Python files for centralized settings.
+- **Dynamic configuration access**: Read and write INI, JSON, YAML, and Python files for centralized settings.
 - **Advanced logging**: Flexible logging setup, Rich formatting for readable and colored logs.
 - **File copy with progress**: Copy files with Rich progress bars and automatic backup of existing files.
 - **Utility functions**: Folder creation, path manipulation, and more.
