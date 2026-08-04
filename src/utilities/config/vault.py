@@ -1,6 +1,7 @@
 import os
 import configparser
 import json
+import yaml
 import importlib.util
 
 import logging
@@ -63,6 +64,7 @@ class _IniSectionProxy(dict):
         key_map = {k.upper(): k for k in self._sections_dict[self._section_name].keys()}
         real = key_map.get(key.upper(), key)
         self[real] = value
+
 
 class _FileProxy(dict):
     """
@@ -128,6 +130,15 @@ class _FileProxy(dict):
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)  # type: ignore[union-attr]
             data = {k: v for k, v in vars(module).items() if not k.startswith('_')}
+            self._raw = data
+            super().update(data)
+
+        elif self._file_type == 'yaml':
+            
+            with open(self._file_path, encoding='utf-8') as f:
+                data = yaml.safe_load(f)
+            if not isinstance(data, dict):
+                raise TypeError("Top-level YAML must be a mapping")
             self._raw = data
             super().update(data)
 
@@ -212,6 +223,8 @@ class VaultMeta(type):
                 file_type = 'json'
             elif ext == '.py':
                 file_type = 'py'
+            elif ext == '.yaml':
+                file_type = 'yaml'
             else:
                 raise AttributeError(f"Unsupported file type: {ext}")
             return _FileProxy(file_path, file_type)
