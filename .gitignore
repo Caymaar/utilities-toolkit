@@ -6,6 +6,7 @@ dist/
 wheels/
 *.egg-info
 .python-version
+.pytest_cache/
 
 # Virtual environments
 .venv
@@ -16,3 +17,4 @@ wheels/
 # Lock files
 uv.lock
 
+archive/

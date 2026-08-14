@@ -1,6 +1,35 @@
 import functools
 from utilities.log.setup import LoggingConfigurator
 
+
+class Lazy:
+    """Diffère un calcul jusqu'au formatage du message, donc jusqu'à ce qu'un
+    handler traite réellement l'enregistrement.
+
+        log.debug("positions: %s", Lazy(lambda: df.describe()))
+
+    **À n'utiliser que quand il faut calculer.** Passer un objet déjà construit
+    est *déjà* paresseux : ``logging`` n'appelle ``__str__`` qu'en cas de
+    traitement, donc ``log.debug("%s", df)` ne coûte rien si DEBUG est éteint.
+    ``Lazy`` sert pour ``head()``, ``describe()``, une agrégation — bref, quand
+    l'argument lui-même est cher à produire.
+
+    Ne jamais mettre de f-string dans un appel de log : elle est évaluée avant
+    même que ``logging`` ne décide s'il garde l'enregistrement.
+    """
+
+    __slots__ = ("_fn",)
+
+    def __init__(self, fn):
+        self._fn = fn
+
+    def __str__(self) -> str:
+        return str(self._fn())
+
+    def __repr__(self) -> str:
+        return "Lazy(%r)" % (self._fn,)
+
+
 def with_spinner(text: str, spinner: str = "simpleDotsScrolling"):
     """
     Decorator factory that displays a console spinner with a status message while the decorated function executes.

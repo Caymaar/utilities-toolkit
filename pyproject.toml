@@ -12,6 +12,13 @@ dependencies = [
     "rich>=14.2.0",
 ]
 
+[project.optional-dependencies]
+# Graphes terminal de utilities.log.plots. Optionnel : spark() couvre le cas
+# courant sans dépendance, pour 640 fois moins cher.
+plot = [
+    "plotext>=5.3.2",
+]
+
 [build-system]
 requires = ["uv_build>=0.8.0,<0.9"]
 build-backend = "uv_build"
@@ -19,6 +26,12 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "pytest>=8.4.2",
+    # Uniquement pour les démos et les tests de rendu : le package n'importe
+    # jamais polars, il le détecte sur l'objet qu'on lui passe.
+    "polars>=1.36.1",
+    "plotext>=5.3.2",
+    "ipykernel>=6.31.0",
+    "pandas>=2.3.3",
 ]
 
 [tool.uv.build-backend]
